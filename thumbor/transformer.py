@@ -287,6 +287,7 @@ class Transformer:
             crop_height = int(
                 round(source_width * self.target_height / target_width, 0)
             )
+            crop_height = max(crop_height, 1)
         else:
             crop_width = int(
                 round(
