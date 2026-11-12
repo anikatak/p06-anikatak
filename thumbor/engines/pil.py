@@ -7,6 +7,7 @@
 # http://www.opensource.org/licenses/mit-license
 # Copyright (c) 2011 globo.com thumbor@googlegroups.com
 
+from collections import Counter
 from io import BytesIO
 
 import piexif
@@ -276,7 +277,27 @@ class Engine(BaseEngine):
                     if pillow_features.check("libimagequant")
                     else None
                 )
+                # Quantizing drops alpha. Remember which pixels were
+                # transparent, then mark the palette index they landed on
+                # as the transparent one, so the GIF keeps its background.
+                alpha = (
+                    self.image.getchannel("A")
+                    if "A" in self.image.mode
+                    else None
+                )
                 self.image = self.image.quantize(method=quantize_method)
+                if alpha is not None and alpha.getextrema()[0] < 255:
+                    transparent_indexes = Counter(
+                        index
+                        for index, pixel_alpha in zip(
+                            self.image.getdata(), alpha.getdata()
+                        )
+                        if pixel_alpha == 0
+                    )
+                    if transparent_indexes:
+                        self.image.info["transparency"] = (
+                            transparent_indexes.most_common(1)[0][0]
+                        )
 
         ext = requested_extension or self.get_default_extension()
 
